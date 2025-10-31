@@ -7,3 +7,6 @@ streamlit-mic-recorder
 faster-whisper
 torch        # only if you plan to run faster-whisper locally (CPU or GPU)
 elevenlabs
+opencv-python
+streamlit_webrtc
+google-cloud-texttospeech
