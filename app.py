@@ -18,7 +18,9 @@ from helpers.video_helper import init_detectors, analyze_frame
 from helpers.feedback_helper import generate_posture_feedback
 from helpers.pdf_helper import extract_text_from_pdf
 
+# Load environment (.env)
 load_dotenv()
+google_api_key = os.getenv("GOOGLE_API_KEY")  # <- read API key from .env / env var
 
 # --- Page setup ---
 st.set_page_config(page_title="CrackGPT Interview Simulator", page_icon="🤖")
@@ -34,11 +36,15 @@ if 'stage' not in st.session_state:
 
 # --- Sidebar ---
 with st.sidebar:
-    # (No changes)
+    # (No changes except we no longer ask for a JSON path or show the API key)
     st.header("🔑 API Setup")
     gemini_api_key = st.text_input("Gemini API Key:", type="password", value=os.getenv("GEMINI_API_KEY"))
     hf_token = st.text_input("HuggingFace Token:", type="password", value=os.getenv("HF_TOKEN"))
-    gcp_key_path = st.text_input("Google Cloud Key JSON Path:", placeholder="e.g., C:\\path\\to\\key.json", value=os.getenv("GCP_KEY_PATH"))
+    # show status about Google API key (do NOT display the key)
+    if google_api_key:
+        st.success("Google Cloud API key loaded from environment (hidden).")
+    else:
+        st.warning("Google API key not found. Add `GOOGLE_API_KEY=...` to your .env or set it as an environment variable.")
     st.markdown("---")
     st.header("⚙️ Settings")
     st.session_state.disable_voice = st.checkbox("Disable voice playback", value=False)
@@ -283,14 +289,16 @@ elif st.session_state.stage == 'interview':
             total_initial = len(st.session_state.initial_questions)
             st.info(f"Question {st.session_state.current_question_index + 1}/{total_initial}: {q_to_ask}")
 
-        # Voice playback (no changes)
+        # Voice playback (changed to use google_api_key from env)
         if not st.session_state.get('disable_voice', False):
-            if gcp_key_path:
+            if google_api_key:
                 try:
-                    audio = google_tts.tts_audio_bytes(q_to_ask, key_path=gcp_key_path)
+                    audio = google_tts.tts_audio_bytes(q_to_ask, api_key=google_api_key)
                     st.audio(audio, format="audio/mpeg")
-                except Exception as e: st.warning(f"Google TTS failed. Check key path.")
-            else: st.warning("Provide Google Cloud Key Path in sidebar for voice.")
+                except Exception as e:
+                    st.warning(f"Google TTS failed: {e}")
+            else:
+                st.warning("Provide Google Cloud API key in your environment for voice playback.")
         
         # Mic recorder (use unique key based on index and type)
         audio_bytes = mic_recorder(start_prompt="🎙️ Start Answering", stop_prompt="⏹️ Stop", 
